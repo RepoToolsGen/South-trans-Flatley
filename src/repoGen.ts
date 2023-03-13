@@ -20,7 +20,7 @@ const repoList = repoConfig as RepoInfo[];
  * Exits program if git not installed.
  * @returns { void }
  */
-function doInit(): void {
+function doValidationAndSetup(): void {
   if (!shell.which("git")) {
     shell.echo("Repo Gen utility requires git to be installed");
     shell.exit(1);
@@ -84,7 +84,7 @@ async function createTargetRepo(
   sourceRepoName: string
 ): Promise<void> {
   shell.echo(
-    `Copying source repository "${repo.url}" ${repo.count} times\n     to target repository "${repo.name}" in organization "${repo.organization}"`
+    `Copying source repository "${repo.url}" ${repo.count} time(s)\n     to target repository "${repo.name}" in GitHub organization "${repo.organization}"`
   );
 
   const body = {
@@ -233,19 +233,24 @@ function copySourceRepoToTargetRepo(
   }
 }
 
-// Checks if git is installed, silences shell output, creates directory to store
-// cloned repos
-doInit();
+/**
+ * @description Deletes local repositories.
+ * @returns { void }
+ */
+function deleteLocalRepos(): void {
+  try {
+    fs.rmSync(path.resolve(localReposDir), { recursive: true, force: true });
+  } catch (error) {
+    shell.echo(`Delete diretory failure for ${localReposDir}`);
+  }
+}
 
-// Determine GitHubToken from .env file
+// Checks if git is installed, silence shell output, and create directory to store
+// local repos
+doValidationAndSetup();
+
+// Determine user GitHub access token from .env file
 const gitHubToken = getGitHubToken();
 
 // Process and create repositories according to repoConfig.json file
 processRepoConfig();
-
-/**
- * @description Deletes local repositories.
- */
-function deleteLocalRepos() {
-  fs.rmdirSync(path.resolve(localReposDir));
-}
