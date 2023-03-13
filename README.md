@@ -34,16 +34,18 @@ personal access token named REPO_GEN_GITHUB_TOKEN. Refer to sample below.
     # User GitHub token
     REPO_GEN_GITHUB_TOKEN=ghp_RvhIefInvalidInvalidRCMNhw4LHjQT
 
-To configure the repositories to be generated, modify the repoConfig.json file.
-The following is a json entry representing info for one repository:
+To configure the repositories to be generated, copy repoConfig-template.json to
+repoConfig.json in the same directory. Edit repoConfig.json to configure the
+repositories to be created. The following is a json entry representing info
+for a single repository:
 
     {
      "url": "https://gitlab.laputa.veracode.io/sca/srcclr/example-java-maven",
      "organization": "RepoToolsGen",
      "name": "example-java-maven",
-     "description": "test repo",
-     "isPrivate": false,
-     "count": 0
+     "description": "javen maven",
+     "isPrivate": true,
+     "count": 3
     }
 
 The repoConfig.json fields are detailed below:
@@ -58,8 +60,8 @@ The repoConfig.json fields are detailed below:
 
         If the count is 0, then do not create a repository for this entry.
 
-        If the count is > 1, then append "-" and count index to the name.
-        For example, for the following values
+        If the count is > 1 and name is specified, then append "-" and
+        count index to the name. For example, for the following values
             "url": "https://gitlab.laputa.veracode.io/sca/srcclr/example-java-maven",
             "organization": "RepoToolsGen",
             "name": "example-java-maven",

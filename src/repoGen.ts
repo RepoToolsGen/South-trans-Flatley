@@ -9,18 +9,33 @@ import all from "./repoConfig.json";
 
 require("shelljs/global");
 
+const clonedReposDir: string = "clonedRepos";
+
 /**
- * @description Checks if git is installed and reads in GitHub token used for authentication.
- * Exits program is git not installed.
- * Exits program if GitHub token not configured in .env file.
- * @returns { string } GitHub token
+ * @description Checks if git is installed, silences shell output and creates
+ * directory to store cloned repos.
+ * Exits program if git not installed.
+ * @returns { void }
  */
-function doInit(): string {
+function doInit(): void {
   if (!shell.which("git")) {
     shell.echo("Repo Gen utility requires git to be installed");
     shell.exit(1);
   }
 
+  shell.config.silent = true;
+
+  if (!fs.existsSync("clonedRepos")) {
+    fs.mkdirSync("clonedRepos");
+  }
+}
+
+/**
+ * @description Gets the GitHub token used for authentication from .env file.
+ * Exits program if GitHub token not configured in .env file.
+ * @returns { string } GitHub token
+ */
+function getGitHubToken(): string {
   dotenv.config({ path: ".env" });
   if (!process.env.REPO_GEN_GITHUB_TOKEN) {
     shell.echo("Missing environment variable REPO_GEN_GITHUB_TOKEN");
@@ -30,55 +45,47 @@ function doInit(): string {
 }
 
 /**
- * @description Processes the configure repo list and creates repos per counter value.
+ * @description Processes the repoConfig.json file and creates repos per counter value.
  * If configured name field is empty, then generate a fake repo name.
  * @returns { void }
  */
-function generateRepos(): void {
+function processRepoConfig(): void {
   let repoCreationCounter: number = 0;
+
   repoList.forEach((repo) => {
-    shell.echo(
-      `Processing ${repo.url} ---> ${repo.organization}/${repo.name} count: ${repo.count}`
-    );
-    // Create repositories per count.  If count is zero, then skip
     if (repo.count !== 0) {
-      if (repo.name === null || repo.name === "") {
-        repo.name = genRandomName();
-      }
-      // if count exceeds 1, then append a dash and index counter for uniqueness
-      const origName = repo.name;
+      const origRepoName = repo.name;
+      const repoNameDir: string = getClonedRepoName(repo.url);
+
       for (let i = 1; i <= repo.count; i++) {
-        if (repo.count > 1 && i >= 1) {
-          repo.name = `${origName}-${i}`;
-        }
+        repo.name = determineNewRepoName(origRepoName, i);
         const repoNew: RepoInfo = Object.assign({}, repo);
-        createRepo(repoNew);
+        createRepo(repoNew, repoNameDir);
         repoCreationCounter++;
       }
     }
   });
+
   shell.echo(`TOTAL REPOSITORIES CREATED: ${repoCreationCounter}`);
 }
 
 /**
- * @description Generates the HMAC header and sends the API REST message to SCA Agent.
+ * @description Clones the repo and creates new repo in GitHub
  * @param { repoInfo } repo repository info to be created
+ * @param { repoNameDir } repoNameDir repository directory name
  * @returns { void }
  */
-function createRepo(repo: RepoInfo): void {
-  const repoGenDir: string = "clonedRepos";
+function createRepo(repo: RepoInfo, repoNameDir: string): void {
+  shell.echo(
+    `Processing ${repo.url} count: ${repo.count} ---> ${repo.organization}/${repo.name}`
+  );
 
-  const repoNameDir: string = getClonedRepoName(repo.url);
-
-  const sendGetRequest = async () => {
+  const sendPostRequest = async () => {
     const body = {
       name: repo.name,
       description: repo.description,
       private: repo.isPrivate,
     };
-    shell.echo(
-      `Send POST create repo ${repo.organization}/${body.name} private: ${body.private}`
-    );
     try {
       const response = await axios.post(
         `https://api.github.com/orgs/${repo.organization}/repos`,
@@ -91,67 +98,17 @@ function createRepo(repo: RepoInfo): void {
         }
       );
 
-      if (!fs.existsSync("clonedRepos")) {
-        fs.mkdirSync("clonedRepos");
-      }
-      // if repo not already created, then git clone
-      if (!fs.existsSync(path.resolve(repoGenDir + "/" + repoNameDir))) {
-        shell.echo(`do git clone ${repo.url}`);
-        if (
-          shell.exec(`git clone ${repo.url}`, { cwd: path.resolve(repoGenDir) })
-            .code !== 0
-        ) {
-          shell.echo(`git clone failure`);
-          shell.exit(1);
-        }
-      }
-
-      if (
-        shell.exec(`git remote remove origin`, {
-          cwd: path.resolve(repoGenDir + "/" + repoNameDir),
-        }).code !== 0
-      ) {
-        shell.echo(`git remote remove origin failed`);
-        shell.exit(1);
-      }
-
-      if (
-        shell.exec(
-          `git remote add origin https://github.com/${repo.organization}/${repo.name}.git`,
-          { cwd: path.resolve("clonedRepos/" + repoNameDir) }
-        ).code !== 0
-      ) {
-        shell.echo(`git remote add origin failed`);
-        shell.exit(1);
-      }
-
-      if (
-        shell.exec(`git branch -M main`, {
-          cwd: path.resolve(repoGenDir + "/" + repoNameDir),
-        }).code !== 0
-      ) {
-        shell.echo(`git branch failed`);
-        shell.exit(1);
-      }
-
-      if (
-        shell.exec(`git push -u origin main`, {
-          cwd: path.resolve(repoGenDir + "/" + repoNameDir),
-        }).code !== 0
-      ) {
-        shell.echo(`git push failed`);
-        shell.exit(1);
-      }
+      runGitShellCommands(repo, repoNameDir);
     } catch (err) {
       const errors = err as Error | AxiosError;
       if (axios.isAxiosError(errors)) {
-        console.log("failed to create repository in: " + repo.organization);
-        console.log(errors.response?.data.message);
-        console.log(errors.response?.data.errors[0]);
+        shell.echo(
+          `ERROR ${repo.organization}/${repo.name} ${errors.response?.data.message} ${errors.response?.data.errors[0].message}`
+        );
       }
     }
   };
-  sendGetRequest();
+  sendPostRequest();
 }
 
 /**
@@ -173,9 +130,9 @@ function getClonedRepoName(repoUrl: string): string {
 /**
  * @description Generate a fake respository name using npm faker module
  * using format of "random word + random word + random last name"
- * @returns { string } cloned repo name
+ * @returns { string } fake repo name
  */
-function genRandomName(): string {
+function generateRandomName(): string {
   return (
     faker.random.word() +
     "-" +
@@ -185,11 +142,93 @@ function genRandomName(): string {
   );
 }
 
+/**
+ * @description Determine the new repository name. If name is not provided, then generate
+ * a fake name.  If name is provided, then append hyphen and counter index.
+ * @param { string } name repository name to be created
+ * @param { number } index counter index to append to repo name
+ * @returns { string } new repository name
+ */
+function determineNewRepoName(name: string, index: number): string {
+  let newName: string;
+  if (name === null || name === "") {
+    newName = generateRandomName();
+  } else {
+    newName = `${name}-${index}`;
+  }
+  return newName;
+}
+
+/**
+ * @description Runs the shellJS git commands to create a new repo.
+ * @param { RepoInfo } repo repository info to be created
+ * @param { string } repoNameDir repo name directory
+ * @returns { void }
+ */
+function runGitShellCommands(repo: RepoInfo, repoNameDir: string): void {
+  try {
+    // if repo not already created, then git clone
+    if (!fs.existsSync(path.resolve(clonedReposDir + "/" + repoNameDir))) {
+      if (
+        shell.exec(`git clone ${repo.url}`, {
+          cwd: path.resolve(clonedReposDir),
+        }).code !== 0
+      ) {
+        shell.echo(`git clone failure`);
+        shell.exit(1);
+      }
+    }
+
+    if (
+      shell.exec(`git remote remove origin`, {
+        cwd: path.resolve(clonedReposDir + "/" + repoNameDir),
+      }).code !== 0
+    ) {
+      shell.echo(`git remote remove origin failed`);
+      shell.exit(1);
+    }
+
+    if (
+      shell.exec(
+        `git remote add origin https://github.com/${repo.organization}/${repo.name}.git`,
+        { cwd: path.resolve("clonedRepos/" + repoNameDir) }
+      ).code !== 0
+    ) {
+      shell.echo(`git remote add origin failed`);
+      shell.exit(1);
+    }
+
+    if (
+      shell.exec(`git branch -M main`, {
+        cwd: path.resolve(clonedReposDir + "/" + repoNameDir),
+      }).code !== 0
+    ) {
+      shell.echo(`git branch failed`);
+      shell.exit(1);
+    }
+
+    if (
+      shell.exec(`git push -u origin main`, {
+        cwd: path.resolve(clonedReposDir + "/" + repoNameDir),
+      }).code !== 0
+    ) {
+      shell.echo(`git push failed`);
+      shell.exit(1);
+    }
+  } catch (error) {
+    shell.exec(`command failed: ` + error);
+  }
+}
+
 // Read in repo configuration file entries and store in array
 const repoList = all as RepoInfo[];
 
-// Determine GitHubToken from .env file
-const gitHubToken = doInit();
+// Checks if git is installed, silences shell output, creates directory to store
+// cloned repos
+doInit();
 
-// Generate repositories according to repoConfig.json file
-generateRepos();
+// Determine GitHubToken from .env file
+const gitHubToken = getGitHubToken();
+
+// Process and create repositories according to repoConfig.json file
+processRepoConfig();
