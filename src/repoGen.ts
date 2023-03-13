@@ -16,7 +16,6 @@ require("shelljs/global");
  * @returns { string } GitHub token
  */
 function doInit(): string {
-
   if (!shell.which("git")) {
     shell.echo("Repo Gen utility requires git to be installed");
     shell.exit(1);
@@ -132,6 +131,7 @@ function createRepo(repo: RepoInfo): void {
         }).code !== 0
       ) {
         shell.echo(`git branch failed`);
+        shell.exit(1);
       }
 
       if (
@@ -140,6 +140,7 @@ function createRepo(repo: RepoInfo): void {
         }).code !== 0
       ) {
         shell.echo(`git push failed`);
+        shell.exit(1);
       }
     } catch (err) {
       const errors = err as Error | AxiosError;
