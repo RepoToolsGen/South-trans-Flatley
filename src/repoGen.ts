@@ -84,7 +84,7 @@ async function createTargetRepo(
   sourceRepoName: string
 ): Promise<void> {
   shell.echo(
-    `Copying source repository "${repo.url}" ${repo.count} time(s)\n     to target repository "${repo.name}" in GitHub organization "${repo.organization}"`
+    `Copying source repository "${repo.url}" ${repo.count} times\n     to target repository "${repo.name}" in GitHub organization "${repo.organization}"`
   );
 
   const body = {
