@@ -58,7 +58,7 @@ function processRepoConfig(): void {
       const repoNameDir: string = getClonedRepoName(repo.url);
 
       for (let i = 1; i <= repo.count; i++) {
-        repo.name = determineNewRepoName(origRepoName, i);
+        repo.name = determineNewRepoName(origRepoName, i, repo.count);
         const repoNew: RepoInfo = Object.assign({}, repo);
         createRepo(repoNew, repoNameDir);
         repoCreationCounter++;
@@ -147,14 +147,21 @@ function generateRandomName(): string {
  * a fake name.  If name is provided, then append hyphen and counter index.
  * @param { string } name repository name to be created
  * @param { number } index counter index to append to repo name
+ * @param { number } count count for how many repos to create
  * @returns { string } new repository name
  */
-function determineNewRepoName(name: string, index: number): string {
-  let newName: string;
+function determineNewRepoName(
+  name: string,
+  index: number,
+  count: number
+): string {
+  let newName: string = name;
   if (name === null || name === "") {
     newName = generateRandomName();
   } else {
-    newName = `${name}-${index}`;
+    if (count > 1) {
+      newName = `${name}-${index}`;
+    }
   }
   return newName;
 }
