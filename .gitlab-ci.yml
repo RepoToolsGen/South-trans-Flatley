@@ -11,4 +11,6 @@ stages:
 
 Build:
   stage: Build
-  script: npm run build
+  script:
+    - npm ci
+    - npm run build
