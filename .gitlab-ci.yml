@@ -1,0 +1,14 @@
+# Global config
+
+image: node:latest
+
+# Stages
+
+stages:
+  - Build
+
+# Build Stage
+
+Build:
+  stage: Build
+  script: npm run build
