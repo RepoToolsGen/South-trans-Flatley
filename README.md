@@ -85,7 +85,3 @@ The repoConfig.json fields are detailed below:
 1. npm ci
 2. npm run build
 3. npm run start
-
-The cloned repositories are created in repo-gen/clonedRepos directory.
-The application does not cleanup and remove the folder, so you may choose to
-manually remove this directory.

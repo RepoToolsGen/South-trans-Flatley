@@ -3,13 +3,16 @@ import path from "path";
 import dotenv from "dotenv";
 import shell from "shelljs";
 import { faker } from "@faker-js/faker";
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 import { RepoInfo } from "./types";
-import all from "./repoConfig.json";
+import repoConfig from "./repoConfig.json";
 
 require("shelljs/global");
 
 const localReposDir: string = "localRepos";
+
+// Read in repo configuration file entries and store in array
+const repoList = repoConfig as RepoInfo[];
 
 /**
  * @description Checks if git is installed, silences shell output and creates
@@ -25,8 +28,8 @@ function doInit(): void {
 
   shell.config.silent = true;
 
-  if (!fs.existsSync("clonedRepos")) {
-    fs.mkdirSync("clonedRepos");
+  if (!fs.existsSync(localReposDir)) {
+    fs.mkdirSync(localReposDir);
   }
 }
 
@@ -67,7 +70,7 @@ async function processRepoConfig(): Promise<void> {
   });
   await Promise.all(inProgress);
   deleteLocalRepos();
-  shell.echo(`TOTAL REPOSITORIES CREATED: ${repoCreationCounter}`);
+  shell.echo(`\nTotal repositories processed: ${repoCreationCounter}`);
 }
 
 /**
@@ -81,7 +84,7 @@ async function createTargetRepo(
   sourceRepoName: string
 ): Promise<void> {
   shell.echo(
-    `Processing ${repo.url} count: ${repo.count} ---> ${repo.organization}/${repo.name}`
+    `Copying source repository "${repo.url}" ${repo.count} times\n     to target repository "${repo.name}" in organization "${repo.organization}"`
   );
 
   const body = {
@@ -102,12 +105,11 @@ async function createTargetRepo(
     );
 
     copySourceRepoToTargetRepo(repo, sourceRepoName);
-  } catch (err) {
-    const errors = err as Error | AxiosError;
-    if (axios.isAxiosError(errors)) {
-      shell.echo(
-        `ERROR ${repo.organization}/${repo.name} ${errors.response?.data.message} ${errors.response?.data.errors[0].message}`
-      );
+  } catch (err: any) {
+    shell.echo(`ERROR processing ${repo.organization}/${repo.name}`);
+    shell.echo(`${err.message}`);
+    if (axios.isAxiosError(err)) {
+      shell.echo(`${err.response?.data?.errors[0].message}`);
     }
   }
 }
@@ -202,7 +204,7 @@ function copySourceRepoToTargetRepo(
     if (
       shell.exec(
         `git remote add origin https://github.com/${repo.organization}/${repo.name}.git`,
-        { cwd: path.resolve("clonedRepos/" + sourceRepoName) }
+        { cwd: path.resolve(`${localReposDir}/${sourceRepoName}`) }
       ).code !== 0
     ) {
       shell.echo(`git remote add origin failed`);
@@ -231,9 +233,6 @@ function copySourceRepoToTargetRepo(
   }
 }
 
-// Read in repo configuration file entries and store in array
-const repoList = all as RepoInfo[];
-
 // Checks if git is installed, silences shell output, creates directory to store
 // cloned repos
 doInit();
@@ -245,8 +244,8 @@ const gitHubToken = getGitHubToken();
 processRepoConfig();
 
 /**
- * @description TODO:
+ * @description Deletes local repositories.
  */
 function deleteLocalRepos() {
-  // TODO: implement delete.
+  fs.rmdirSync(path.resolve(localReposDir));
 }
