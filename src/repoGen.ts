@@ -108,7 +108,7 @@ async function createTargetRepo(
   } catch (err: any) {
     shell.echo(`ERROR processing ${repo.organization}/${repo.name}`);
     shell.echo(`${err.message}`);
-    if (axios.isAxiosError(err)) {
+    if (axios.isAxiosError(err) && err.response?.data?.errors?.length > 0) {
       shell.echo(`${err.response?.data?.errors[0].message}`);
     }
   }
