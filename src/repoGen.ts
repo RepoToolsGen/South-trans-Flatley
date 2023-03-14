@@ -203,7 +203,7 @@ function copySourceRepoToTargetRepo(
 
     if (
       shell.exec(
-        `git remote add origin https://github.com/${repo.organization}/${repo.name}.git`,
+        `git remote add origin git@github.com:${repo.organization}/${repo.name}.git`,
         { cwd: path.resolve(`${localReposDir}/${sourceRepoName}`) }
       ).code !== 0
     ) {

@@ -28,6 +28,8 @@ is used to execute the git commands.
 
 To run Repo Gen, the git software needs to be installed.
 
+Login to your github account and goto settings -> SSH and GPG keys and make sure you congigure the SSH key.
+
 Create `.env` file in repo-gen top-level directory which contains a user GitHub
 personal access token named REPO_GEN_GITHUB_TOKEN. Refer to sample below.
 
