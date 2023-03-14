@@ -20,7 +20,7 @@ is used to execute the git commands.
         - body contains new repo info
     2. git clone url
     3. git remote remove origin
-    4. git remote add origin https://github.com/${repo.organization}/${repo.name}.git
+    4. git remote add origin git@github.com/${repo.organization}/${repo.name}.git
     5. git branch -M main
     6. git push -u origin main
 
