@@ -187,7 +187,8 @@ function copySourceRepoToTargetRepo(
           cwd: path.resolve(localReposDir),
         }).code !== 0
       ) {
-        shell.echo(`git clone failure`);
+        shell.echo(`git clone failure for ${repo.organization}/${repo.name}`);
+        deleteLocalRepos();
         shell.exit(1);
       }
     }
@@ -197,7 +198,10 @@ function copySourceRepoToTargetRepo(
         cwd: path.resolve(localReposDir + "/" + sourceRepoName),
       }).code !== 0
     ) {
-      shell.echo(`git remote remove origin failed`);
+      shell.echo(
+        `git remote remove origin failed for ${repo.organization}/${repo.name}`
+      );
+      deleteLocalRepos();
       shell.exit(1);
     }
 
@@ -207,7 +211,10 @@ function copySourceRepoToTargetRepo(
         { cwd: path.resolve(`${localReposDir}/${sourceRepoName}`) }
       ).code !== 0
     ) {
-      shell.echo(`git remote add origin failed`);
+      shell.echo(
+        `git remote add origin failed for ${repo.organization}/${repo.name}`
+      );
+      deleteLocalRepos();
       shell.exit(1);
     }
 
@@ -216,7 +223,8 @@ function copySourceRepoToTargetRepo(
         cwd: path.resolve(localReposDir + "/" + sourceRepoName),
       }).code !== 0
     ) {
-      shell.echo(`git branch failed`);
+      shell.echo(`git branch failed for ${repo.organization}/${repo.name}`);
+      deleteLocalRepos();
       shell.exit(1);
     }
 
@@ -225,7 +233,8 @@ function copySourceRepoToTargetRepo(
         cwd: path.resolve(localReposDir + "/" + sourceRepoName),
       }).code !== 0
     ) {
-      shell.echo(`git push failed`);
+      shell.echo(`git push failed for ${repo.organization}/${repo.name}`);
+      deleteLocalRepos();
       shell.exit(1);
     }
   } catch (error) {
@@ -241,7 +250,7 @@ function deleteLocalRepos(): void {
   try {
     fs.rmSync(path.resolve(localReposDir), { recursive: true, force: true });
   } catch (error) {
-    shell.echo(`Delete diretory failure for ${localReposDir}`);
+    shell.echo(`Delete directory failure for ${localReposDir}`);
   }
 }
 
