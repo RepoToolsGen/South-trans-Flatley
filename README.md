@@ -44,7 +44,7 @@ The following json entry represents a single repository:
       "url": "https://gitlab.laputa.veracode.io/sca/srcclr/example-java-maven",
       "organization": "RepoToolsGen",
       "name": "example-java-maven",
-      "description": "javen maven",
+      "description": "java maven",
       "isPrivate": true,
       "count": 3
     }

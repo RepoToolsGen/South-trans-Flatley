@@ -5,7 +5,6 @@
   "main": "./dist",
   "scripts": {
     "build": "npm run clean && npx tsc",
-    "postbuild": "cpy --flat ./src/repoConfig.json ./dist/",
     "clean": "npx rimraf dist",
     "formatter": "npx prettier --write --ignore-path .gitignore .",
     "formatter:check": "npx prettier --check --ignore-path .gitignore .",

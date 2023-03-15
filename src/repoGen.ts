@@ -5,14 +5,12 @@ import shell from "shelljs";
 import { faker } from "@faker-js/faker";
 import axios from "axios";
 import { RepoInfo } from "./types";
-import repoConfig from "./repoConfig.json";
-
-require("shelljs/global");
 
 const localReposDir: string = "localRepos";
 
 // Read in repo configuration file entries and store in array
-const repoList = repoConfig as RepoInfo[];
+const text = fs.readFileSync("./repoConfig.json", "utf8");
+const repoList = JSON.parse(text) as RepoInfo[];
 
 /**
  * @description Checks if git is installed, silences shell output and creates
