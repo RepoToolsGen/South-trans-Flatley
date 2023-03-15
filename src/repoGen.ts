@@ -58,13 +58,17 @@ async function processRepoConfig(): Promise<void> {
 
   repoList.forEach((repo) => {
     if (repo.count !== 0) {
-      console.log(`Processing source repository ${repo.url} ${repo.count} time(s)`);
+      console.log(
+        `Processing source repository ${repo.url} ${repo.count} time(s)`
+      );
       const sourceRepoName: string = getSourceRepoName(repo.url);
 
       for (let i = 1; i <= repo.count; i++) {
         const targetRepoName = determineNewRepoName(repo.name, i, repo.count);
         const repoNew: RepoInfo = { ...repo, name: targetRepoName };
-        console.log(`    Creating target repository ${targetRepoName} in GitHub organization ${repo.organization}`);
+        console.log(
+          `    Creating target repository ${targetRepoName} in GitHub organization ${repo.organization}`
+        );
         inProgress.push(createTargetRepo(repoNew, sourceRepoName));
         repoCreationCounter++;
       }
@@ -74,7 +78,9 @@ async function processRepoConfig(): Promise<void> {
   console.log("Processing, please wait...\n");
   await Promise.all(inProgress);
   deleteLocalRepos();
-  console.log(`Total repositories processed: ${repoCreationCounter}, ${successes} successful, ${failures} failures`);
+  console.log(
+    `Total repositories processed: ${repoCreationCounter}, ${successes} successful, ${failures} failures`
+  );
 }
 
 /**
@@ -190,7 +196,9 @@ function copySourceRepoToTargetRepo(
           cwd: path.resolve(localReposDir),
         }).code !== 0
       ) {
-        throw new Error(`git clone failure for ${repo.organization}/${repo.name}`);
+        throw new Error(
+          `git clone failure for ${repo.organization}/${repo.name}`
+        );
       }
     }
 
@@ -199,7 +207,9 @@ function copySourceRepoToTargetRepo(
         cwd: path.resolve(localReposDir + "/" + sourceRepoName),
       }).code !== 0
     ) {
-      throw new Error(`git remote remove origin failed for ${repo.organization}/${repo.name}`);
+      throw new Error(
+        `git remote remove origin failed for ${repo.organization}/${repo.name}`
+      );
     }
 
     if (
@@ -208,7 +218,9 @@ function copySourceRepoToTargetRepo(
         { cwd: path.resolve(`${localReposDir}/${sourceRepoName}`) }
       ).code !== 0
     ) {
-      throw new Error(`git remote add origin failed for ${repo.organization}/${repo.name}`);
+      throw new Error(
+        `git remote add origin failed for ${repo.organization}/${repo.name}`
+      );
     }
 
     if (
@@ -216,7 +228,9 @@ function copySourceRepoToTargetRepo(
         cwd: path.resolve(localReposDir + "/" + sourceRepoName),
       }).code !== 0
     ) {
-      throw new Error(`git branch failed for ${repo.organization}/${repo.name}`);
+      throw new Error(
+        `git branch failed for ${repo.organization}/${repo.name}`
+      );
     }
 
     if (
@@ -227,7 +241,9 @@ function copySourceRepoToTargetRepo(
       throw new Error(`git push failed for ${repo.organization}/${repo.name}`);
     }
   } catch (err: any) {
-    console.log(`*** Aborting: A fatal error occurred. Please verify you have Git set up appropriately and have GitHub set up to use an SSH key.`)
+    console.log(
+      `*** Aborting: A fatal error occurred. Please verify you have Git set up appropriately and have GitHub set up to use an SSH key.`
+    );
     console.log(`ERROR: ${err.message}`);
     // Comment deleteLocalRepos() out, if you need to debug any of the above git commands
     deleteLocalRepos();
