@@ -26,9 +26,10 @@ is used to execute the git commands.
 
 ## Configuration
 
-To run Repo Gen, the git software needs to be installed.
+To run Repo Gen, the Git software needs to be installed.
 
-Login to your GitHub account and go to settings -> SSH and GPG keys -> configure SSH key.
+Create an SSH Key. Log into to your GitHub account and go to
+Settings -> SSH and GPG keys, then configure a new SSH key.
 
 Create `.env` file in repo-gen top-level directory which contains a user GitHub
 personal access token named REPO_GEN_GITHUB_TOKEN. Refer to sample below.
@@ -51,15 +52,14 @@ The following json entry represents a single repository:
 
 The json fields are detailed below:
 
-    1. url - source repository url
-    2. organization - target GitHub organization
-    3. name - target repository name
-        If the name is empty, generate a fake name of format:
-        "random word + random word + random last name"
-    4. description - target repository description
-    5. isPrivate - target private/public boolean indicator
-    6. count - number of target repositories to create
-
+    * url - source repository url
+    * organization - target GitHub organization
+    * name - target repository name
+        If the name is empty, generate a fake randomly generated repo name
+        with format:  "word-word-last name"
+    * description - target repository description
+    * isPrivate - target private/public boolean indicator
+    * count - number of target repositories to create
         If the count is 0, then do not create a repository.
 
         If the count is > 1 and name is specified, then append "-" and
@@ -73,7 +73,7 @@ The json fields are detailed below:
             https: github.com/RepoToolsGen/example-java-maven-2
             https: github.com/RepoToolsGen/example-java-maven-3
 
-## To Build and Run Service Locally
+## To Build and Run Application Locally
 
 1. npm ci
 2. npm run build

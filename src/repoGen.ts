@@ -87,7 +87,7 @@ async function processRepoConfig(): Promise<void> {
  * @description Creates a new target repo, clones the source repo and pushes source repo into new target repo.
  * @param { RepoInfo } repo repository info to be created
  * @param { string } sourceRepoName source repository name
- * @returns { void }
+ * @returns { Promise<void> }
  */
 async function createTargetRepo(
   repo: RepoInfo,
@@ -114,7 +114,7 @@ async function createTargetRepo(
     successes++;
   } catch (err: any) {
     failures++;
-    console.log(`ERROR processing ${repo.organization}/${repo.name}`);
+    console.log(`Error processing ${repo.organization}/${repo.name}`);
     console.log(`    ${err.message}`);
     if (axios.isAxiosError(err) && err.response?.data?.errors?.length > 0) {
       console.log(`    ${err.response?.data?.errors[0].message}`);
@@ -124,9 +124,9 @@ async function createTargetRepo(
 }
 
 /**
- * @description Determine the name of the source repo from its URL
- * So if URL is https://gitlab.laputa.veracode.io/sca/srcclr/example-java-maven,
- * then return "example-java-maven"
+ * @description Determine the name of the source repo from its URL. For example,
+ * if URL is https://gitlab.laputa.veracode.io/sca/srcclr/example-java-maven,
+ * then return "example-java-maven".
  * @param { repoUrl } repoUrl repository URL
  * @returns { string } source repo name
  */
@@ -141,7 +141,7 @@ function getSourceRepoName(repoUrl: string): string {
 
 /**
  * @description Generate a fake repository name using npm faker module
- * using format of "random word + random word + random last name"
+ * using format of "random word - random word - random last name"
  * @returns { string } fake repo name
  */
 function generateRandomName(): string {
@@ -156,9 +156,9 @@ function generateRandomName(): string {
 
 /**
  * @description Determine the new repository name. If name is not provided, then generate
- * a fake name.  If name is provided, then append hyphen and counter index.
- * @param { string } name repository name to be created
- * @param { number } index counter index to append to repo name
+ * a fake name. If name is provided, then append hyphen and counter index.
+ * @param { string } name target repository name
+ * @param { number } index counter index
  * @param { number } count count for how many repos to create
  * @returns { string } new repository name
  */
@@ -263,7 +263,7 @@ function deleteLocalRepos(): void {
   }
 }
 
-// Checks if git is installed, silence shell output, and create directory to store
+// Checks if Git is installed, silence shell output, and create directory to store
 // local repos
 doValidationAndSetup();
 
