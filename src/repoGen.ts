@@ -4,15 +4,16 @@ import dotenv from "dotenv";
 import shell from "shelljs";
 import { faker } from "@faker-js/faker";
 import axios from "axios";
-import { RepoInfo } from "./types";
+import { CreateRepoInfo, DeleteRepoInfo } from "./types";
 
 const localReposDir: string = "localRepos";
+let deleteRepoList: DeleteRepoInfo[] = [];
 let failures = 0;
 let successes = 0;
 
 // Read in repo configuration file entries and store in array
 const text = fs.readFileSync("./repoConfig.json", "utf8");
-const repoList = JSON.parse(text) as RepoInfo[];
+const repoList = JSON.parse(text) as CreateRepoInfo[];
 
 /**
  * @description Checks if git is installed, silences shell output and creates
@@ -50,7 +51,8 @@ function getGitHubToken(): string {
 /**
  * @description Processes the repoConfig.json file and creates repos per counter value.
  * If configured name field is empty, then generate a fake repo name.
- * @returns { void }
+ * Generate delete repos file containing entries for newly created repos.
+ * @returns { Promise<void> }
  */
 async function processRepoConfig(): Promise<void> {
   let repoCreationCounter: number = 0;
@@ -65,7 +67,7 @@ async function processRepoConfig(): Promise<void> {
 
       for (let i = 1; i <= repo.count; i++) {
         const targetRepoName = determineNewRepoName(repo.name, i, repo.count);
-        const repoNew: RepoInfo = { ...repo, name: targetRepoName };
+        const repoNew: CreateRepoInfo = { ...repo, name: targetRepoName };
         console.log(
           `    Creating target repository ${targetRepoName} in GitHub organization ${repo.organization}`
         );
@@ -77,7 +79,10 @@ async function processRepoConfig(): Promise<void> {
 
   console.log("Processing, please wait...\n");
   await Promise.all(inProgress);
+
   deleteLocalRepos();
+  generateDeleteReposFile();
+
   console.log(
     `Total repositories processed: ${repoCreationCounter}, ${successes} successful, ${failures} failures`
   );
@@ -90,7 +95,7 @@ async function processRepoConfig(): Promise<void> {
  * @returns { Promise<void> }
  */
 async function createTargetRepo(
-  repo: RepoInfo,
+  repo: CreateRepoInfo,
   sourceRepoName: string
 ): Promise<void> {
   const body = {
@@ -111,6 +116,9 @@ async function createTargetRepo(
     );
 
     copySourceRepoToTargetRepo(repo, sourceRepoName);
+
+    addRepoToDeleteList(repo.organization, repo.name);
+
     successes++;
   } catch (err: any) {
     failures++;
@@ -185,7 +193,7 @@ function determineNewRepoName(
  * @returns { void }
  */
 function copySourceRepoToTargetRepo(
-  repo: RepoInfo,
+  repo: CreateRepoInfo,
   sourceRepoName: string
 ): void {
   try {
@@ -252,6 +260,20 @@ function copySourceRepoToTargetRepo(
 }
 
 /**
+ * @description Adds newly created repository to delete repo array.
+ * @param { string } organization GitHub organization
+ * @param { string } name repo name
+ * @returns { void }
+ */
+function addRepoToDeleteList(organization: string, name: string): void {
+  const deleteRepo: DeleteRepoInfo = {
+    organization,
+    name,
+  };
+  deleteRepoList.push(deleteRepo);
+}
+
+/**
  * @description Deletes local repositories.
  * @returns { void }
  */
@@ -260,6 +282,27 @@ function deleteLocalRepos(): void {
     fs.rmSync(path.resolve(localReposDir), { recursive: true, force: true });
   } catch (error) {
     console.log(`Delete directory failure for ${localReposDir}`);
+  }
+}
+
+/**
+ * @description Generates delete repos json file for newly created repos.
+ * @returns { void }
+ */
+function generateDeleteReposFile(): void {
+  if (deleteRepoList.length > 0) {
+    const deleteRepoListJson: string = JSON.stringify(deleteRepoList, null, 2);
+    let now = new Date();
+    const dateTime = `${now.getFullYear()}${
+      now.getMonth() + 1
+    }${now.getDate()}-${now.getHours()}${now.getMinutes()}`;
+
+    try {
+      fs.writeFileSync(`./deleteRepos-${dateTime}.json`, deleteRepoListJson);
+      console.log(`deleteRepos-${dateTime}.json created\n`);
+    } catch (err: any) {
+      console.log(`Failed to create delete repos json file: ${err.message}`);
+    }
   }
 }
 

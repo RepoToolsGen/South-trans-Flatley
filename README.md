@@ -24,6 +24,16 @@ is used to execute the git commands.
     5. git branch -M main
     6. git push -u origin main
 
+To compliment bulk repository creation, there is a utility to perform remote repository
+deletion, Repo Delete (https://gitlab.laputa.veracode.io/repo-tools/repo-delete).
+The input to Repo Delete is a json file containing entries of repositories to delete in
+GitHub. Hence, Repo Gen creates a delete repos json file listing the repos just created.
+The date and time is included in the json file to preserve the history. This file can be
+used as input to Repo Delete Utility. The file is named deleteRepos-YYYYMMDD-HHMM.json.
+
+Repo Gen --> creates deleteRepos-YYYYMMDD-HHMM.json
+Repo Delete --> processes deleteRepos.json
+
 ## Configuration
 
 To run Repo Gen, the Git software needs to be installed.
