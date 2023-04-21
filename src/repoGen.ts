@@ -7,6 +7,8 @@ import axios from "axios";
 import { CreateRepoInfo, DeleteRepoInfo } from "./types";
 
 const localReposDir: string = "localRepos";
+const waitTimeInMs: number = 4000;
+const startDate: number = Date.now();
 let deleteRepoList: DeleteRepoInfo[] = [];
 let failures = 0;
 let successes = 0;
@@ -58,7 +60,8 @@ async function processRepoConfig(): Promise<void> {
   let repoCreationCounter: number = 0;
   const inProgress: Promise<void>[] = [];
 
-  repoList.forEach((repo) => {
+  for (let j = 0; j < repoList.length; j++) {
+    const repo: CreateRepoInfo = repoList[j];
     if (repo.count !== 0) {
       console.log(
         `Processing source repository ${repo.url} ${repo.count} time(s)`
@@ -66,6 +69,8 @@ async function processRepoConfig(): Promise<void> {
       const sourceRepoName: string = getSourceRepoName(repo.url);
 
       for (let i = 1; i <= repo.count; i++) {
+        // Throttle API requests to prevent GitHub API secondary rate limits
+        await wait(waitTimeInMs);
         const targetRepoName = determineNewRepoName(repo.name, i, repo.count);
         const repoNew: CreateRepoInfo = { ...repo, name: targetRepoName };
         console.log(
@@ -75,7 +80,7 @@ async function processRepoConfig(): Promise<void> {
         repoCreationCounter++;
       }
     }
-  });
+  }
 
   console.log("Processing, please wait...\n");
   await Promise.all(inProgress);
@@ -84,8 +89,21 @@ async function processRepoConfig(): Promise<void> {
   generateDeleteReposFile();
 
   console.log(
+    "Repo Gen duration in minutes: " +
+      ((Date.now() - startDate) / (1000 * 60)).toFixed(1)
+  );
+  console.log(
     `Total repositories processed: ${repoCreationCounter}, ${successes} successful, ${failures} failures`
   );
+}
+
+/**
+ * @description Waits for the specified duration
+ * @param { number } durationInMs amount of time to wait in milliseconds
+ * @returns { Promise<void> }
+ */
+async function wait(durationInMs: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, durationInMs));
 }
 
 /**
@@ -124,6 +142,34 @@ async function createTargetRepo(
     failures++;
     console.log(`Error processing ${repo.organization}/${repo.name}`);
     console.log(`    ${err.message}`);
+    if (err.response?.data?.message) {
+      console.log(`    ${err.response.data.message}`);
+    }
+    if (err.response.status === 403) {
+      console.log(
+        `    x-ratelimit-limit: ${err.response.headers.get(
+          "x-ratelimit-limit"
+        )}   Maximum number of requests you're permitted to make per hour`
+      );
+      console.log(
+        `    x-ratelimit-remaining: ${err.response.headers.get(
+          "x-ratelimit-remaining"
+        )}   Number of requests remaining in current rate limit window`
+      );
+      console.log(
+        `    x-ratelimit-used: ${err.response.headers.get(
+          "x-ratelimit-used"
+        )}   Number of requests you've made in current rate limit window`
+      );
+      console.log(
+        `    x-ratelimit-reset: ${err.response.headers.get(
+          "x-ratelimit-reset"
+        )}   Time at which the current rate limit resets in UTC epoch seconds\n`
+      );
+      console.log(`*** Aborting: A fatal error occurred.`);
+      deleteLocalRepos();
+      process.exit(2);
+    }
     if (axios.isAxiosError(err) && err.response?.data?.errors?.length > 0) {
       console.log(`    ${err.response?.data?.errors[0].message}`);
     }
@@ -178,6 +224,8 @@ function determineNewRepoName(
   let newName: string = name;
   if (name === null || name === "") {
     newName = generateRandomName();
+    // Remove apostrophe which may included in the fake name, since not allowed
+    newName = newName.replace("'", "");
   } else {
     if (count > 1) {
       newName = `${name}-${index}`;
@@ -192,10 +240,10 @@ function determineNewRepoName(
  * @param { string } sourceRepoName source repo name
  * @returns { void }
  */
-function copySourceRepoToTargetRepo(
+async function copySourceRepoToTargetRepo(
   repo: CreateRepoInfo,
   sourceRepoName: string
-): void {
+): Promise<void> {
   try {
     // if repo not already created, then git clone
     if (!fs.existsSync(path.resolve(localReposDir + "/" + sourceRepoName))) {
