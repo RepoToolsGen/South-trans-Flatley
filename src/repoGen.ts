@@ -240,10 +240,10 @@ function determineNewRepoName(
  * @param { string } sourceRepoName source repo name
  * @returns { void }
  */
-async function copySourceRepoToTargetRepo(
+function copySourceRepoToTargetRepo(
   repo: CreateRepoInfo,
   sourceRepoName: string
-): Promise<void> {
+): void {
   try {
     // if repo not already created, then git clone
     if (!fs.existsSync(path.resolve(localReposDir + "/" + sourceRepoName))) {
