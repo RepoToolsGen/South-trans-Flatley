@@ -83,6 +83,36 @@ The json fields are detailed below:
             https: github.com/RepoToolsGen/example-java-maven-2
             https: github.com/RepoToolsGen/example-java-maven-3
 
+## GitHub Rate Limits
+
+The GitHub API rate limit ensures that the API is fast and available for everyone.
+If the GitHub API rate limit is exceeded, GitHub will send an HTTP 403 response.
+The response header contains the following x-ratelimit fields which are shown in the
+console output.
+
+    x-ratelimit-limit     The maximum number of requests you're permitted to make per hour.
+    x-ratelimit-remaining The number of requests remaining in the current rate limit window.
+    x-ratelimit-used      The number of requests you've made in the current rate limit window.
+    x-ratelimit-reset     The UTC epoch time in secs at which the current rate limit window resets.
+
+If you are limited, you should not run Repo Gen until after the reset time per the
+x-ratelimit-reset value. User access token requests are limited to 5,000 requests per hour
+and per authenticated user. GitHub also uses secondary rate limits to ensure API availability.
+For POST repo create requests, GitHub specifies to wait at least one second between each
+request.
+
+Repo Gen waits 4 seconds between each POST request. When creating a large amount
+of repos, you may encounter secondary rate limits even though the request interval
+and repo count criteria are met. If this occurs, then you will be limited for about
+30 minutes to 1 hour.
+
+You can refer to the GitHub cocumentation:
+https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting
+
+https://docs.github.com/en/rest/guides/best-practices-for-integrators?apiVersion=2022-11-28#dealing-with-rate-limits
+
+https://docs.github.com/en/rest/guides/best-practices-for-integrators?apiVersion=2022-11-28#dealing-with-secondary-rate-limits
+
 ## To Build and Run Application Locally
 
 1. npm ci
