@@ -161,11 +161,16 @@ async function createTargetRepo(
           "x-ratelimit-used"
         )}   Number of requests you've made in current rate limit window`
       );
+
+      const utcEpochSecs = err.response.headers.get("x-ratelimit-reset");
       console.log(
-        `    x-ratelimit-reset: ${err.response.headers.get(
-          "x-ratelimit-reset"
-        )}   Time at which the current rate limit resets in UTC epoch seconds\n`
+        `    x-ratelimit-reset: ${utcEpochSecs}   Time at which the current rate limit resets in UTC epoch seconds\n`
       );
+
+      const resetDate = new Date(0);
+      resetDate.setUTCSeconds(utcEpochSecs);
+      console.log(`    local reset time: ${resetDate.toString()}\n`);
+
       console.log(`*** Aborting: A fatal error occurred.`);
       deleteLocalRepos();
       process.exit(2);
@@ -224,8 +229,8 @@ function determineNewRepoName(
   let newName: string = name;
   if (name === null || name === "") {
     newName = generateRandomName();
-    // Remove apostrophe which may included in the fake name, since not allowed
-    newName = newName.replace("'", "");
+    // Remove/replace invalid characters that faker may generate, since not allowed
+    newName = newName.replace(/['//]/g, "-");
   } else {
     if (count > 1) {
       newName = `${name}-${index}`;
