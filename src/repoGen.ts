@@ -190,10 +190,9 @@ async function createTargetRepo(
  * @returns { string } source repo name
  */
 function getSourceRepoName(repoUrl: string): string {
-  const url = new URL(repoUrl);
-  const sourceRepoName = url.pathname.substring(
-    url.pathname.lastIndexOf("/") + 1,
-    url.pathname.length
+  const sourceRepoName = repoUrl.substring(
+    repoUrl.lastIndexOf("/") + 1,
+    repoUrl.length
   );
   return sourceRepoName;
 }
