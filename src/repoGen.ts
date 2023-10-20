@@ -58,7 +58,6 @@ function getGitHubToken(): string {
  */
 async function processRepoConfig(): Promise<void> {
   let repoCreationCounter: number = 0;
-  const inProgress: Promise<void>[] = [];
 
   for (let j = 0; j < repoList.length; j++) {
     const repo: CreateRepoInfo = repoList[j];
@@ -76,14 +75,11 @@ async function processRepoConfig(): Promise<void> {
         console.log(
           `    Creating target repository ${targetRepoName} in GitHub organization ${repo.organization}`
         );
-        inProgress.push(createTargetRepo(repoNew, sourceRepoName));
+        await createTargetRepo(repoNew, sourceRepoName);
         repoCreationCounter++;
       }
     }
   }
-
-  console.log("Processing, please wait...\n");
-  await Promise.all(inProgress);
 
   deleteLocalRepos();
   generateDeleteReposFile();
@@ -121,64 +117,76 @@ async function createTargetRepo(
     description: repo.description,
     private: repo.isPrivate,
   };
-  try {
-    await axios.post(
-      `https://api.github.com/orgs/${repo.organization}/repos`,
-      body,
-      {
-        headers: {
-          Authorization: "token " + gitHubToken,
-          Accept: "application/vnd.github+json",
-        },
+  let attempts = 0;
+  let retry = true;
+  while (retry) {
+    retry = false;
+    attempts++;
+    try {
+      await axios.post(
+        `https://api.github.com/orgs/${repo.organization}/repos`,
+        body,
+        {
+          headers: {
+            Authorization: "token " + gitHubToken,
+            Accept: "application/vnd.github+json",
+          },
+        }
+      );
+
+      copySourceRepoToTargetRepo(repo, sourceRepoName);
+
+      addRepoToDeleteList(repo.organization, repo.name);
+
+      successes++;
+    } catch (err: any) {
+      failures++;
+      console.log(`Error processing ${repo.organization}/${repo.name}`);
+      console.log(`    ${err.message}`);
+      if (err.response?.data?.message) {
+        console.log(`    ${err.response.data.message}`);
       }
-    );
+      if (err.response.status === 403) {
+        console.log(
+          `    x-ratelimit-limit: ${err.response.headers.get(
+            "x-ratelimit-limit"
+          )}   Maximum number of requests you're permitted to make per hour`
+        );
+        console.log(
+          `    x-ratelimit-remaining: ${err.response.headers.get(
+            "x-ratelimit-remaining"
+          )}   Number of requests remaining in current rate limit window`
+        );
+        console.log(
+          `    x-ratelimit-used: ${err.response.headers.get(
+            "x-ratelimit-used"
+          )}   Number of requests you've made in current rate limit window`
+        );
 
-    copySourceRepoToTargetRepo(repo, sourceRepoName);
+        const utcEpochSecs = err.response.headers.get("x-ratelimit-reset");
+        console.log(
+          `    x-ratelimit-reset: ${utcEpochSecs}   Time at which the current rate limit resets in UTC epoch seconds\n`
+        );
 
-    addRepoToDeleteList(repo.organization, repo.name);
+        const resetDate = new Date(0);
+        resetDate.setUTCSeconds(utcEpochSecs);
+        console.log(`    local reset time: ${resetDate.toString()}\n`);
 
-    successes++;
-  } catch (err: any) {
-    failures++;
-    console.log(`Error processing ${repo.organization}/${repo.name}`);
-    console.log(`    ${err.message}`);
-    if (err.response?.data?.message) {
-      console.log(`    ${err.response.data.message}`);
+        // retry every 5 minutes for up to an hour
+        if (attempts <= 12) {
+          console.log(`Waiting 5 minutes to retry...`);
+          retry = true;
+          await wait(1000 * 60 * 5);
+        } else {
+          console.log(`*** Aborting: A fatal error occurred.`);
+          deleteLocalRepos();
+          process.exit(2);
+        }
+      }
+      if (axios.isAxiosError(err) && err.response?.data?.errors?.length > 0) {
+        console.log(`    ${err.response?.data?.errors[0].message}`);
+      }
     }
-    if (err.response.status === 403) {
-      console.log(
-        `    x-ratelimit-limit: ${err.response.headers.get(
-          "x-ratelimit-limit"
-        )}   Maximum number of requests you're permitted to make per hour`
-      );
-      console.log(
-        `    x-ratelimit-remaining: ${err.response.headers.get(
-          "x-ratelimit-remaining"
-        )}   Number of requests remaining in current rate limit window`
-      );
-      console.log(
-        `    x-ratelimit-used: ${err.response.headers.get(
-          "x-ratelimit-used"
-        )}   Number of requests you've made in current rate limit window`
-      );
-
-      const utcEpochSecs = err.response.headers.get("x-ratelimit-reset");
-      console.log(
-        `    x-ratelimit-reset: ${utcEpochSecs}   Time at which the current rate limit resets in UTC epoch seconds\n`
-      );
-
-      const resetDate = new Date(0);
-      resetDate.setUTCSeconds(utcEpochSecs);
-      console.log(`    local reset time: ${resetDate.toString()}\n`);
-
-      console.log(`*** Aborting: A fatal error occurred.`);
-      deleteLocalRepos();
-      process.exit(2);
-    }
-    if (axios.isAxiosError(err) && err.response?.data?.errors?.length > 0) {
-      console.log(`    ${err.response?.data?.errors[0].message}`);
-    }
-    console.log("Processing, please wait...\n");
   }
 }
 
@@ -190,10 +198,9 @@ async function createTargetRepo(
  * @returns { string } source repo name
  */
 function getSourceRepoName(repoUrl: string): string {
-  const url = new URL(repoUrl);
-  const sourceRepoName = url.pathname.substring(
-    url.pathname.lastIndexOf("/") + 1,
-    url.pathname.length
+  const sourceRepoName = repoUrl.substring(
+    repoUrl.lastIndexOf("/") + 1,
+    repoUrl.length
   );
   return sourceRepoName;
 }
@@ -331,6 +338,7 @@ function addRepoToDeleteList(organization: string, name: string): void {
  * @returns { void }
  */
 function deleteLocalRepos(): void {
+  console.log("Deleting local repos...\n");
   try {
     fs.rmSync(path.resolve(localReposDir), { recursive: true, force: true });
   } catch (error) {
@@ -343,6 +351,7 @@ function deleteLocalRepos(): void {
  * @returns { void }
  */
 function generateDeleteReposFile(): void {
+  console.log("Generating delete repos file...\n");
   if (deleteRepoList.length > 0) {
     const deleteRepoListJson: string = JSON.stringify(deleteRepoList, null, 2);
     let now = new Date();

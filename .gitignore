@@ -4,3 +4,4 @@ dist
 .idea
 repoConfig.json
 deleteRepos*.json
+localRepos
