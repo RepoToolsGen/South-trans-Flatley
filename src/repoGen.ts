@@ -353,12 +353,12 @@ function addRepoToDeleteList(organization: string, name: string): void {
  * @returns { void }
  */
 function deleteLocalRepos(): void {
-  // console.log("Deleting local repos...\n");
-  // try {
-  //   fs.rmSync(path.resolve(localReposDir), { recursive: true, force: true });
-  // } catch (error) {
-  //   console.log(`Delete directory failure for ${localReposDir}`);
-  // }
+  console.log("Deleting local repos...\n");
+  try {
+    fs.rmSync(path.resolve(localReposDir), { recursive: true, force: true });
+  } catch (error) {
+    console.log(`Delete directory failure for ${localReposDir}`);
+  }
 }
 
 /**
