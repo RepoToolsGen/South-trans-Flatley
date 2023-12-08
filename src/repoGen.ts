@@ -198,10 +198,15 @@ async function createTargetRepo(
  * @returns { string } source repo name
  */
 function getSourceRepoName(repoUrl: string): string {
-  const sourceRepoName = repoUrl.substring(
+  let sourceRepoName = repoUrl.substring(
     repoUrl.lastIndexOf("/") + 1,
     repoUrl.length
   );
+
+  if (sourceRepoName.endsWith(".git")) {
+    sourceRepoName = sourceRepoName.slice(0, -4);
+  }
+
   return sourceRepoName;
 }
 
@@ -257,56 +262,66 @@ function copySourceRepoToTargetRepo(
   sourceRepoName: string
 ): void {
   try {
+    let commandOutput;
     // if repo not already created, then git clone
     if (!fs.existsSync(path.resolve(localReposDir + "/" + sourceRepoName))) {
-      if (
-        shell.exec(`git clone ${repo.url}`, {
-          cwd: path.resolve(localReposDir),
-        }).code !== 0
-      ) {
+      commandOutput = shell.exec(`git clone ${repo.url}`, {
+        cwd: path.resolve(localReposDir),
+      });
+      if (commandOutput.code !== 0) {
         throw new Error(
-          `git clone failure for ${repo.organization}/${repo.name}`
+          `git clone failure for ${repo.organization}/${repo.name}: ${
+            commandOutput.stderr ? commandOutput.stderr : commandOutput.stdout
+          }`
         );
       }
     }
 
-    if (
-      shell.exec(`git remote remove origin`, {
-        cwd: path.resolve(localReposDir + "/" + sourceRepoName),
-      }).code !== 0
-    ) {
+    commandOutput = shell.exec(`git remote remove origin`, {
+      cwd: path.resolve(localReposDir + "/" + sourceRepoName),
+    });
+    if (commandOutput.code !== 0) {
       throw new Error(
-        `git remote remove origin failed for ${repo.organization}/${repo.name}`
+        `git remote remove origin failed for ${repo.organization}/${
+          repo.name
+        }: ${
+          commandOutput.stderr ? commandOutput.stderr : commandOutput.stdout
+        }`
       );
     }
 
-    if (
-      shell.exec(
-        `git remote add origin git@github.com:${repo.organization}/${repo.name}.git`,
-        { cwd: path.resolve(`${localReposDir}/${sourceRepoName}`) }
-      ).code !== 0
-    ) {
+    commandOutput = shell.exec(
+      `git remote add origin git@github.com:${repo.organization}/${repo.name}.git`,
+      { cwd: path.resolve(`${localReposDir}/${sourceRepoName}`) }
+    );
+    if (commandOutput.code !== 0) {
       throw new Error(
-        `git remote add origin failed for ${repo.organization}/${repo.name}`
+        `git remote add origin failed for ${repo.organization}/${repo.name}: ${
+          commandOutput.stderr ? commandOutput.stderr : commandOutput.stdout
+        }`
       );
     }
 
-    if (
-      shell.exec(`git branch -M main`, {
-        cwd: path.resolve(localReposDir + "/" + sourceRepoName),
-      }).code !== 0
-    ) {
+    commandOutput = shell.exec(`git branch -M main`, {
+      cwd: path.resolve(localReposDir + "/" + sourceRepoName),
+    });
+    if (commandOutput.code !== 0) {
       throw new Error(
-        `git branch failed for ${repo.organization}/${repo.name}`
+        `git branch failed for ${repo.organization}/${repo.name}: ${
+          commandOutput.stderr ? commandOutput.stderr : commandOutput.stdout
+        }`
       );
     }
 
-    if (
-      shell.exec(`git push -u origin main`, {
-        cwd: path.resolve(localReposDir + "/" + sourceRepoName),
-      }).code !== 0
-    ) {
-      throw new Error(`git push failed for ${repo.organization}/${repo.name}`);
+    commandOutput = shell.exec(`git push -u origin main`, {
+      cwd: path.resolve(localReposDir + "/" + sourceRepoName),
+    });
+    if (commandOutput.code !== 0) {
+      throw new Error(
+        `git push failed for ${repo.organization}/${repo.name}: ${
+          commandOutput.stderr ? commandOutput.stderr : commandOutput.stdout
+        }`
+      );
     }
   } catch (err: any) {
     console.log(
@@ -338,12 +353,12 @@ function addRepoToDeleteList(organization: string, name: string): void {
  * @returns { void }
  */
 function deleteLocalRepos(): void {
-  console.log("Deleting local repos...\n");
-  try {
-    fs.rmSync(path.resolve(localReposDir), { recursive: true, force: true });
-  } catch (error) {
-    console.log(`Delete directory failure for ${localReposDir}`);
-  }
+  // console.log("Deleting local repos...\n");
+  // try {
+  //   fs.rmSync(path.resolve(localReposDir), { recursive: true, force: true });
+  // } catch (error) {
+  //   console.log(`Delete directory failure for ${localReposDir}`);
+  // }
 }
 
 /**

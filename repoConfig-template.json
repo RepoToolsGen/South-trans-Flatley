@@ -235,7 +235,7 @@
     "url": "https://gitlab.laputa.veracode.io/sca/srcclr/test-js-bower",
     "organization": "RepoToolsGen",
     "name": "test-js-bower",
-    "description": "js blower",
+    "description": "js bower",
     "isPrivate": true,
     "count": 0
   }
